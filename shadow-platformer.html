@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow Walker - Advanced 2D Platformer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
+        }
+
+        canvas {
+            display: block;
+            background: #0a0a15;
+            border: 3px solid #00ffff;
+        }
+
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            color: white;
+            font-size: 14px;
+        }
+
+        .hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            border: 2px solid #00ffff;
+        }
+
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #00ffff;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0066, #ff6600);
+            transition: width 0.3s;
+        }
+
+        .shadow-bar {
+            width: 200px;
+            height: 15px;
+            background: #333;
+            border: 2px solid #9900ff;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .shadow-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6600ff, #9900ff);
+            transition: width 0.3s;
+        }
+
+        .combo-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 5px;
+            border: 2px solid #ffaa00;
+            text-align: center;
+        }
+
+        .combo-number {
+            font-size: 48px;
+            color: #ffaa00;
+            text-shadow: 0 0 10px #ffaa00;
+            font-weight: bold;
+        }
+
+        .achievement-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            border: 3px solid #ffaa00;
+            text-align: center;
+            transition: transform 0.3s;
+            pointer-events: all;
+            z-index: 1000;
+        }
+
+        .achievement-popup.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .achievement-title {
+            font-size: 24px;
+            color: #ffaa00;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            border: 2px solid #00ffff;
+            max-width: 300px;
+        }
+
+        .control-item {
+            margin: 3px 0;
+            color: #00ffff;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: all;
+            z-index: 100;
+        }
+
+        .start-screen.hidden {
+            display: none;
+        }
+
+        .game-title {
+            font-size: 48px;
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff;
+            margin-bottom: 30px;
+        }
+
+        .start-button {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: linear-gradient(135deg, #00ffff, #0099ff);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: #000;
+            font-weight: bold;
+            transition: transform 0.2s;
+            pointer-events: all;
+        }
+
+        .start-button:hover {
+            transform: scale(1.1);
+        }
+
+        .achievements-panel {
+            position: absolute;
+            top: 50%;
+            right: -350px;
+            transform: translateY(-50%);
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 5px;
+            border: 2px solid #ffaa00;
+            max-height: 80vh;
+            overflow-y: auto;
+            transition: right 0.3s;
+        }
+
+        .achievements-panel.show {
+            right: 10px;
+        }
+
+        .achievement-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 170, 0, 0.1);
+            border-radius: 3px;
+            border-left: 3px solid #ffaa00;
+        }
+
+        .achievement-item.unlocked {
+            background: rgba(0, 255, 0, 0.1);
+            border-left-color: #00ff00;
+        }
+
+        .toggle-achievements {
+            position: absolute;
+            top: 120px;
+            right: 10px;
+            padding: 10px 15px;
+            background: rgba(255, 170, 0, 0.8);
+            border: 2px solid #ffaa00;
+            border-radius: 5px;
+            cursor: pointer;
+            pointer-events: all;
+            color: #000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1200" height="700"></canvas>
+        <div id="ui">
+            <div class="hud">
+                <div>Health: <span id="healthText">100</span>/100</div>
+                <div class="health-bar">
+                    <div class="health-fill" id="healthFill" style="width: 100%"></div>
+                </div>
+                <div>Shadow Energy: <span id="shadowText">100</span>/100</div>
+                <div class="shadow-bar">
+                    <div class="shadow-fill" id="shadowFill" style="width: 100%"></div>
+                </div>
+                <div>Score: <span id="score">0</span></div>
+                <div>Level: <span id="level">1</span></div>
+            </div>
+
+            <div class="combo-display" id="comboDisplay" style="display: none;">
+                <div class="combo-number" id="comboNumber">0</div>
+                <div>COMBO!</div>
+            </div>
+
+            <div class="controls">
+                <div class="control-item">← → : Move</div>
+                <div class="control-item">SPACE : Jump (double jump)</div>
+                <div class="control-item">A : Attack</div>
+                <div class="control-item">S : Shadow Dash</div>
+                <div class="control-item">D : Shadow Clone</div>
+                <div class="control-item">F : Recall to Clone</div>
+                <div class="control-item">TAB : Achievements</div>
+            </div>
+
+            <div class="toggle-achievements" id="toggleAchievements">
+                Achievements
+            </div>
+
+            <div class="achievements-panel" id="achievementsPanel">
+                <h3 style="color: #ffaa00; margin-bottom: 15px;">Achievements</h3>
+                <div id="achievementsList"></div>
+            </div>
+
+            <div class="achievement-popup" id="achievementPopup">
+                <div class="achievement-title">Achievement Unlocked!</div>
+                <div id="achievementName" style="color: #fff; font-size: 18px;"></div>
+            </div>
+
+            <div class="start-screen" id="startScreen">
+                <div class="game-title">SHADOW WALKER</div>
+                <p style="color: #00ffff; margin-bottom: 30px; text-align: center; max-width: 600px;">
+                    Master the shadows to defeat enemies and reach the portal!<br>
+                    Use shadow powers to dash through darkness and create clones.
+                </p>
+                <button class="start-button" id="startButton">START GAME</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game Configuration
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const GRAVITY = 0.6;
+        const FRICTION = 0.8;
+
+        // Game State
+        let gameState = {
+            running: false,
+            score: 0,
+            level: 1,
+            combo: 0,
+            comboTimer: 0,
+            particles: [],
+            enemies: [],
+            platforms: [],
+            collectibles: [],
+            shadowZones: [],
+            lightZones: []
+        };
+
+        // Player Object
+        const player = {
+            x: 100,
+            y: 500,
+            width: 30,
+            height: 40,
+            vx: 0,
+            vy: 0,
+            speed: 5,
+            jumpPower: 12,
+            health: 100,
+            maxHealth: 100,
+            shadowEnergy: 100,
+            maxShadowEnergy: 100,
+            onGround: false,
+            jumpsLeft: 2,
+            facing: 1,
+            attacking: false,
+            attackCooldown: 0,
+            attackAnimation: 0,
+            shadowClone: null,
+            invincible: false,
+            invincibleTimer: 0
+        };
+
+        // Achievements System
+        const achievements = [
+            { id: 'firstBlood', name: 'First Blood', description: 'Defeat your first enemy', unlocked: false },
+            { id: 'combo5', name: 'Combo Master', description: 'Achieve a 5x combo', unlocked: false },
+            { id: 'combo10', name: 'Combo Legend', description: 'Achieve a 10x combo', unlocked: false },
+            { id: 'shadowDash', name: 'Shadow Walker', description: 'Use shadow dash 10 times', unlocked: false, progress: 0 },
+            { id: 'shadowClone', name: 'Doppelganger', description: 'Use shadow clone 5 times', unlocked: false, progress: 0 },
+            { id: 'collector', name: 'Collector', description: 'Collect 20 orbs', unlocked: false, progress: 0 },
+            { id: 'untouchable', name: 'Untouchable', description: 'Complete a level without taking damage', unlocked: false },
+            { id: 'speedrunner', name: 'Speedrunner', description: 'Complete level 1 in under 30 seconds', unlocked: false },
+            { id: 'explorer', name: 'Explorer', description: 'Find all secret areas', unlocked: false, progress: 0 }
+        ];
+
+        // Input Handler
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                toggleAchievements();
+            }
+        });
+        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+
+        // Particle System
+        class Particle {
+            constructor(x, y, vx, vy, color, size, life) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.size = size;
+                this.life = life;
+                this.maxLife = life;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.2;
+                this.life--;
+            }
+
+            draw() {
+                const alpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color.replace(')', `, ${alpha})`).replace('rgb', 'rgba');
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+            }
+        }
+
+        // Enemy Class
+        class Enemy {
+            constructor(x, y, type = 'basic') {
+                this.x = x;
+                this.y = y;
+                this.width = 30;
+                this.height = 35;
+                this.vx = 2;
+                this.vy = 0;
+                this.health = type === 'basic' ? 30 : 60;
+                this.maxHealth = this.health;
+                this.type = type;
+                this.onGround = false;
+                this.attackCooldown = 0;
+                this.hitFlash = 0;
+            }
+
+            update() {
+                this.vy += GRAVITY;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.onGround = false;
+
+                // Platform collision
+                gameState.platforms.forEach(platform => {
+                    if (this.x < platform.x + platform.width &&
+                        this.x + this.width > platform.x &&
+                        this.y + this.height > platform.y &&
+                        this.y + this.height < platform.y + 20 &&
+                        this.vy >= 0) {
+                        this.y = platform.y - this.height;
+                        this.vy = 0;
+                        this.onGround = true;
+                    }
+                });
+
+                // Turn around at edges or walls
+                let nearEdge = true;
+                gameState.platforms.forEach(platform => {
+                    if (this.onGround &&
+                        this.x + this.width/2 > platform.x &&
+                        this.x + this.width/2 < platform.x + platform.width) {
+                        nearEdge = false;
+                    }
+                });
+
+                if (nearEdge || this.x < 0 || this.x > canvas.width - this.width) {
+                    this.vx *= -1;
+                }
+
+                // Simple AI - move toward player if close
+                const distToPlayer = Math.abs(this.x - player.x);
+                if (distToPlayer < 200 && this.onGround) {
+                    this.vx = this.x < player.x ? 2 : -2;
+                }
+
+                if (this.attackCooldown > 0) this.attackCooldown--;
+                if (this.hitFlash > 0) this.hitFlash--;
+            }
+
+            draw() {
+                ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : (this.type === 'basic' ? '#ff3366' : '#ff0000');
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // Health bar
+                const barWidth = this.width;
+                const healthPercent = this.health / this.maxHealth;
+                ctx.fillStyle = '#333';
+                ctx.fillRect(this.x, this.y - 8, barWidth, 4);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(this.x, this.y - 8, barWidth * healthPercent, 4);
+
+                // Eyes
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(this.x + 8, this.y + 10, 4, 4);
+                ctx.fillRect(this.x + 18, this.y + 10, 4, 4);
+            }
+
+            takeDamage(damage) {
+                this.health -= damage;
+                this.hitFlash = 5;
+
+                // Knockback particles
+                for (let i = 0; i < 10; i++) {
+                    gameState.particles.push(new Particle(
+                        this.x + this.width/2,
+                        this.y + this.height/2,
+                        (Math.random() - 0.5) * 8,
+                        (Math.random() - 0.5) * 8,
+                        'rgb(255, 0, 0)',
+                        3,
+                        30
+                    ));
+                }
+
+                return this.health <= 0;
+            }
+        }
+
+        // Platform Class
+        class Platform {
+            constructor(x, y, width, height, type = 'normal') {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.type = type;
+            }
+
+            draw() {
+                if (this.type === 'normal') {
+                    ctx.fillStyle = '#2a4858';
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.strokeStyle = '#00ffff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(this.x, this.y, this.width, this.height);
+                } else if (this.type === 'shadow') {
+                    ctx.fillStyle = '#1a1a3e';
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.strokeStyle = '#6600ff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(this.x, this.y, this.width, this.height);
+                }
+            }
+        }
+
+        // Collectible Class
+        class Collectible {
+            constructor(x, y, type = 'orb') {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.size = 15;
+                this.rotation = 0;
+                this.collected = false;
+            }
+
+            update() {
+                this.rotation += 0.1;
+
+                // Check collision with player
+                const dx = this.x - (player.x + player.width/2);
+                const dy = this.y - (player.y + player.height/2);
+                const distance = Math.sqrt(dx*dx + dy*dy);
+
+                if (distance < this.size + 20 && !this.collected) {
+                    this.collect();
+                }
+            }
+
+            collect() {
+                this.collected = true;
+                gameState.score += 100;
+
+                // Particles
+                for (let i = 0; i < 20; i++) {
+                    gameState.particles.push(new Particle(
+                        this.x, this.y,
+                        (Math.random() - 0.5) * 6,
+                        (Math.random() - 0.5) * 6,
+                        'rgb(255, 215, 0)',
+                        4,
+                        40
+                    ));
+                }
+
+                updateAchievementProgress('collector', 1);
+            }
+
+            draw() {
+                if (this.collected) return;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size);
+                gradient.addColorStop(0, '#ffff00');
+                gradient.addColorStop(0.5, '#ffaa00');
+                gradient.addColorStop(1, '#ff8800');
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        // Shadow Zone
+        class ShadowZone {
+            constructor(x, y, width, height) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+            }
+
+            draw() {
+                ctx.fillStyle = 'rgba(20, 0, 40, 0.6)';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // Animated shadow particles
+                for (let i = 0; i < 3; i++) {
+                    const x = this.x + Math.random() * this.width;
+                    const y = this.y + Math.random() * this.height;
+                    ctx.fillStyle = 'rgba(100, 0, 200, 0.3)';
+                    ctx.fillRect(x, y, 3, 3);
+                }
+            }
+
+            contains(obj) {
+                return obj.x + obj.width/2 > this.x &&
+                       obj.x + obj.width/2 < this.x + this.width &&
+                       obj.y + obj.height/2 > this.y &&
+                       obj.y + obj.height/2 < this.y + this.height;
+            }
+        }
+
+        // Portal (level end)
+        class Portal {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 40;
+                this.height = 60;
+                this.rotation = 0;
+            }
+
+            update() {
+                this.rotation += 0.05;
+
+                // Check if player reached portal
+                if (player.x + player.width > this.x &&
+                    player.x < this.x + this.width &&
+                    player.y + player.height > this.y &&
+                    player.y < this.y + this.height) {
+                    nextLevel();
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+
+                // Outer ring
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 25, 35, this.rotation, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Inner glow
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 30);
+                gradient.addColorStop(0, 'rgba(0, 255, 255, 0.6)');
+                gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(-30, -40, 60, 80);
+
+                ctx.restore();
+            }
+        }
+
+        let portal = null;
+
+        // Initialize Level
+        function initLevel(levelNum) {
+            gameState.platforms = [];
+            gameState.enemies = [];
+            gameState.collectibles = [];
+            gameState.shadowZones = [];
+            portal = null;
+
+            if (levelNum === 1) {
+                // Ground
+                gameState.platforms.push(new Platform(0, 650, 1200, 50));
+
+                // Platforms
+                gameState.platforms.push(new Platform(200, 550, 150, 20));
+                gameState.platforms.push(new Platform(450, 450, 150, 20));
+                gameState.platforms.push(new Platform(700, 350, 150, 20));
+                gameState.platforms.push(new Platform(950, 250, 200, 20));
+
+                // Shadow platforms
+                gameState.platforms.push(new Platform(100, 400, 120, 20, 'shadow'));
+                gameState.platforms.push(new Platform(600, 500, 120, 20, 'shadow'));
+
+                // Enemies
+                gameState.enemies.push(new Enemy(300, 500));
+                gameState.enemies.push(new Enemy(500, 400));
+                gameState.enemies.push(new Enemy(750, 300));
+                gameState.enemies.push(new Enemy(1000, 200, 'tank'));
+
+                // Collectibles
+                gameState.collectibles.push(new Collectible(275, 520));
+                gameState.collectibles.push(new Collectible(525, 420));
+                gameState.collectibles.push(new Collectible(775, 320));
+                gameState.collectibles.push(new Collectible(1050, 220));
+                gameState.collectibles.push(new Collectible(160, 370));
+
+                // Shadow zones
+                gameState.shadowZones.push(new ShadowZone(0, 450, 180, 200));
+                gameState.shadowZones.push(new ShadowZone(550, 520, 180, 130));
+                gameState.shadowZones.push(new ShadowZone(880, 270, 150, 380));
+
+                // Portal
+                portal = new Portal(1050, 190);
+            } else if (levelNum === 2) {
+                // More challenging level
+                gameState.platforms.push(new Platform(0, 650, 1200, 50));
+                gameState.platforms.push(new Platform(100, 550, 100, 20));
+                gameState.platforms.push(new Platform(300, 500, 100, 20));
+                gameState.platforms.push(new Platform(500, 450, 100, 20));
+                gameState.platforms.push(new Platform(700, 400, 100, 20));
+                gameState.platforms.push(new Platform(900, 350, 100, 20));
+                gameState.platforms.push(new Platform(1000, 250, 150, 20));
+
+                // More enemies
+                gameState.enemies.push(new Enemy(150, 500));
+                gameState.enemies.push(new Enemy(350, 450));
+                gameState.enemies.push(new Enemy(550, 400, 'tank'));
+                gameState.enemies.push(new Enemy(750, 350));
+                gameState.enemies.push(new Enemy(950, 300, 'tank'));
+
+                // More collectibles
+                for (let i = 0; i < 8; i++) {
+                    gameState.collectibles.push(new Collectible(
+                        150 + i * 120,
+                        300 - Math.random() * 100
+                    ));
+                }
+
+                gameState.shadowZones.push(new ShadowZone(200, 520, 200, 130));
+                gameState.shadowZones.push(new ShadowZone(600, 420, 200, 230));
+
+                portal = new Portal(1050, 190);
+            }
+
+            player.x = 100;
+            player.y = 500;
+            player.vx = 0;
+            player.vy = 0;
+        }
+
+        // Player Update
+        function updatePlayer() {
+            // Movement
+            if (keys['arrowleft'] || keys['a']) {
+                player.vx = -player.speed;
+                player.facing = -1;
+            } else if (keys['arrowright'] || keys['d']) {
+                player.vx = player.speed;
+                player.facing = 1;
+            } else {
+                player.vx *= FRICTION;
+            }
+
+            // Jumping
+            if (keys[' '] && player.jumpsLeft > 0) {
+                player.vy = -player.jumpPower;
+                player.jumpsLeft--;
+                keys[' '] = false; // Prevent holding
+
+                // Jump particles
+                for (let i = 0; i < 10; i++) {
+                    gameState.particles.push(new Particle(
+                        player.x + player.width/2,
+                        player.y + player.height,
+                        (Math.random() - 0.5) * 4,
+                        Math.random() * 2,
+                        'rgb(100, 200, 255)',
+                        3,
+                        20
+                    ));
+                }
+            }
+
+            // Attacking
+            if (keys['a'] && player.attackCooldown === 0) {
+                player.attacking = true;
+                player.attackAnimation = 10;
+                player.attackCooldown = 20;
+
+                // Check enemy hits
+                gameState.enemies.forEach((enemy, index) => {
+                    const dx = enemy.x - player.x;
+                    const dy = enemy.y - player.y;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+
+                    if (distance < 60) {
+                        const killed = enemy.takeDamage(25);
+                        if (killed) {
+                            gameState.enemies.splice(index, 1);
+                            gameState.score += 500;
+                            addCombo();
+
+                            // Check first blood achievement
+                            if (!achievements.find(a => a.id === 'firstBlood').unlocked) {
+                                unlockAchievement('firstBlood');
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Shadow Dash
+            if (keys['s'] && player.shadowEnergy >= 30) {
+                const inShadow = gameState.shadowZones.some(zone => zone.contains(player));
+                if (inShadow) {
+                    player.x += player.facing * 150;
+                    player.shadowEnergy -= 30;
+                    keys['s'] = false;
+
+                    // Dash particles
+                    for (let i = 0; i < 30; i++) {
+                        gameState.particles.push(new Particle(
+                            player.x + player.width/2,
+                            player.y + player.height/2,
+                            (Math.random() - 0.5) * 10,
+                            (Math.random() - 0.5) * 10,
+                            'rgb(150, 0, 255)',
+                            4,
+                            40
+                        ));
+                    }
+
+                    updateAchievementProgress('shadowDash', 1);
+                }
+            }
+
+            // Shadow Clone
+            if (keys['d'] && player.shadowEnergy >= 40 && !player.shadowClone) {
+                player.shadowClone = { x: player.x, y: player.y };
+                player.shadowEnergy -= 40;
+                keys['d'] = false;
+                updateAchievementProgress('shadowClone', 1);
+            }
+
+            // Recall to Clone
+            if (keys['f'] && player.shadowClone) {
+                player.x = player.shadowClone.x;
+                player.y = player.shadowClone.y;
+                player.shadowClone = null;
+                keys['f'] = false;
+
+                // Recall particles
+                for (let i = 0; i < 40; i++) {
+                    gameState.particles.push(new Particle(
+                        player.x + player.width/2,
+                        player.y + player.height/2,
+                        (Math.random() - 0.5) * 12,
+                        (Math.random() - 0.5) * 12,
+                        'rgb(200, 0, 255)',
+                        5,
+                        50
+                    ));
+                }
+            }
+
+            // Physics
+            player.vy += GRAVITY;
+            player.x += player.vx;
+            player.y += player.vy;
+
+            // Platform collision
+            player.onGround = false;
+            gameState.platforms.forEach(platform => {
+                if (player.x < platform.x + platform.width &&
+                    player.x + player.width > platform.x &&
+                    player.y + player.height > platform.y &&
+                    player.y + player.height < platform.y + 20 &&
+                    player.vy >= 0) {
+                    player.y = platform.y - player.height;
+                    player.vy = 0;
+                    player.onGround = true;
+                    player.jumpsLeft = 2;
+                }
+            });
+
+            // Boundaries
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+            if (player.y > canvas.height) {
+                player.health -= 20;
+                player.x = 100;
+                player.y = 500;
+            }
+
+            // Shadow energy regeneration
+            const inShadow = gameState.shadowZones.some(zone => zone.contains(player));
+            if (inShadow) {
+                player.shadowEnergy = Math.min(player.maxShadowEnergy, player.shadowEnergy + 0.5);
+            } else {
+                player.shadowEnergy = Math.min(player.maxShadowEnergy, player.shadowEnergy + 0.1);
+            }
+
+            // Enemy collision
+            if (!player.invincible) {
+                gameState.enemies.forEach(enemy => {
+                    if (player.x < enemy.x + enemy.width &&
+                        player.x + player.width > enemy.x &&
+                        player.y < enemy.y + enemy.height &&
+                        player.y + player.height > enemy.y) {
+                        player.health -= 10;
+                        player.invincible = true;
+                        player.invincibleTimer = 60;
+
+                        // Knockback
+                        player.vx = (player.x < enemy.x ? -1 : 1) * 10;
+                        player.vy = -8;
+                    }
+                });
+            }
+
+            // Cooldowns
+            if (player.attackCooldown > 0) player.attackCooldown--;
+            if (player.attackAnimation > 0) player.attackAnimation--;
+            if (player.invincibleTimer > 0) {
+                player.invincibleTimer--;
+                if (player.invincibleTimer === 0) player.invincible = false;
+            }
+
+            // Combo timer
+            if (gameState.comboTimer > 0) {
+                gameState.comboTimer--;
+                if (gameState.comboTimer === 0) {
+                    gameState.combo = 0;
+                }
+            }
+
+            // Death check
+            if (player.health <= 0) {
+                resetGame();
+            }
+        }
+
+        // Draw Player
+        function drawPlayer() {
+            if (player.invincible && Math.floor(Date.now() / 100) % 2 === 0) {
+                ctx.globalAlpha = 0.5;
+            }
+
+            // Body
+            ctx.fillStyle = '#00ffff';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            // Attack animation
+            if (player.attackAnimation > 0) {
+                ctx.fillStyle = '#ffaa00';
+                ctx.fillRect(
+                    player.x + (player.facing > 0 ? player.width : -20),
+                    player.y + 10,
+                    20,
+                    10
+                );
+            }
+
+            // Eyes
+            ctx.fillStyle = '#ffffff';
+            const eyeOffset = player.facing > 0 ? 15 : 5;
+            ctx.fillRect(player.x + eyeOffset, player.y + 10, 5, 5);
+
+            // Shadow clone
+            if (player.shadowClone) {
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = '#9900ff';
+                ctx.fillRect(player.shadowClone.x, player.shadowClone.y, player.width, player.height);
+            }
+
+            ctx.globalAlpha = 1;
+        }
+
+        // Add Combo
+        function addCombo() {
+            gameState.combo++;
+            gameState.comboTimer = 180; // 3 seconds
+
+            if (gameState.combo === 5 && !achievements.find(a => a.id === 'combo5').unlocked) {
+                unlockAchievement('combo5');
+            }
+            if (gameState.combo === 10 && !achievements.find(a => a.id === 'combo10').unlocked) {
+                unlockAchievement('combo10');
+            }
+        }
+
+        // Update Achievement Progress
+        function updateAchievementProgress(achievementId, amount) {
+            const achievement = achievements.find(a => a.id === achievementId);
+            if (achievement && !achievement.unlocked) {
+                achievement.progress = (achievement.progress || 0) + amount;
+
+                if (achievementId === 'shadowDash' && achievement.progress >= 10) {
+                    unlockAchievement(achievementId);
+                } else if (achievementId === 'shadowClone' && achievement.progress >= 5) {
+                    unlockAchievement(achievementId);
+                } else if (achievementId === 'collector' && achievement.progress >= 20) {
+                    unlockAchievement(achievementId);
+                }
+            }
+        }
+
+        // Unlock Achievement
+        function unlockAchievement(achievementId) {
+            const achievement = achievements.find(a => a.id === achievementId);
+            if (achievement && !achievement.unlocked) {
+                achievement.unlocked = true;
+                showAchievementPopup(achievement.name);
+                updateAchievementsDisplay();
+            }
+        }
+
+        // Show Achievement Popup
+        function showAchievementPopup(name) {
+            const popup = document.getElementById('achievementPopup');
+            const nameEl = document.getElementById('achievementName');
+            nameEl.textContent = name;
+            popup.classList.add('show');
+
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 3000);
+        }
+
+        // Update Achievements Display
+        function updateAchievementsDisplay() {
+            const list = document.getElementById('achievementsList');
+            list.innerHTML = '';
+
+            achievements.forEach(achievement => {
+                const div = document.createElement('div');
+                div.className = `achievement-item ${achievement.unlocked ? 'unlocked' : ''}`;
+                div.innerHTML = `
+                    <div style="font-weight: bold; color: ${achievement.unlocked ? '#00ff00' : '#ffaa00'}">
+                        ${achievement.unlocked ? '✓ ' : ''}${achievement.name}
+                    </div>
+                    <div style="font-size: 12px; color: #aaa; margin-top: 5px;">
+                        ${achievement.description}
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // Toggle Achievements Panel
+        function toggleAchievements() {
+            const panel = document.getElementById('achievementsPanel');
+            panel.classList.toggle('show');
+        }
+
+        // Next Level
+        function nextLevel() {
+            gameState.level++;
+            if (gameState.level > 2) {
+                alert('Congratulations! You completed all levels!\nFinal Score: ' + gameState.score);
+                resetGame();
+            } else {
+                initLevel(gameState.level);
+            }
+        }
+
+        // Reset Game
+        function resetGame() {
+            player.health = player.maxHealth;
+            player.shadowEnergy = player.maxShadowEnergy;
+            gameState.score = 0;
+            gameState.level = 1;
+            gameState.combo = 0;
+            initLevel(1);
+        }
+
+        // Update Game
+        function update() {
+            if (!gameState.running) return;
+
+            updatePlayer();
+
+            // Update enemies
+            gameState.enemies.forEach(enemy => enemy.update());
+
+            // Update collectibles
+            gameState.collectibles.forEach(c => c.update());
+
+            // Update particles
+            gameState.particles = gameState.particles.filter(p => {
+                p.update();
+                return p.life > 0;
+            });
+
+            // Update portal
+            if (portal) portal.update();
+
+            // Update UI
+            document.getElementById('healthText').textContent = Math.max(0, player.health);
+            document.getElementById('healthFill').style.width = (player.health / player.maxHealth * 100) + '%';
+            document.getElementById('shadowText').textContent = Math.floor(player.shadowEnergy);
+            document.getElementById('shadowFill').style.width = (player.shadowEnergy / player.maxShadowEnergy * 100) + '%';
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('level').textContent = gameState.level;
+
+            // Update combo display
+            const comboDisplay = document.getElementById('comboDisplay');
+            const comboNumber = document.getElementById('comboNumber');
+            if (gameState.combo > 1) {
+                comboDisplay.style.display = 'block';
+                comboNumber.textContent = gameState.combo + 'x';
+            } else {
+                comboDisplay.style.display = 'none';
+            }
+        }
+
+        // Draw Game
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#0a0a15';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw shadow zones
+            gameState.shadowZones.forEach(zone => zone.draw());
+
+            // Draw platforms
+            gameState.platforms.forEach(platform => platform.draw());
+
+            // Draw collectibles
+            gameState.collectibles.forEach(c => c.draw());
+
+            // Draw portal
+            if (portal) portal.draw();
+
+            // Draw enemies
+            gameState.enemies.forEach(enemy => enemy.draw());
+
+            // Draw player
+            drawPlayer();
+
+            // Draw particles
+            gameState.particles.forEach(p => p.draw());
+        }
+
+        // Game Loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start Game
+        document.getElementById('startButton').addEventListener('click', () => {
+            document.getElementById('startScreen').classList.add('hidden');
+            gameState.running = true;
+            initLevel(1);
+        });
+
+        // Toggle achievements button
+        document.getElementById('toggleAchievements').addEventListener('click', toggleAchievements);
+
+        // Initialize
+        updateAchievementsDisplay();
+        gameLoop();
+    </script>
+</body>
+</html>
